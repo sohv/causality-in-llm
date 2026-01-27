@@ -21,40 +21,54 @@ def load_titanic():
     """Load and prepare Titanic dataset."""
     from sklearn.datasets import fetch_openml
     from sklearn.preprocessing import LabelEncoder
-    
+
     # Load Titanic from OpenML
     titanic = fetch_openml('titanic', version=1, as_frame=True, parser='auto')
     df = titanic.data.copy()
     df['survived'] = titanic.target
-    
+
     # Clean and prepare
     df = df[['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'survived']].dropna()
-    
-    # Encode categorical
+
+    # Encode categorical variables
     le = LabelEncoder()
     df['sex'] = le.fit_transform(df['sex'])
-    df['survived'] = df['survived'].astype(int)
-    
+
+    # Convert survived to int (it's categorical)
+    df['survived'] = df['survived'].astype(str).astype(int)
+
+    # Ensure all columns are numeric (convert any remaining categorical)
+    for col in df.columns:
+        if df[col].dtype == 'object' or str(df[col].dtype) == 'category':
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # Drop any rows with NaN after conversion
+    df = df.dropna()
+
+    # Convert to float64 for numerical stability in LiNGAM
+    df = df.astype(np.float64)
+
     # Define true causal graph (based on domain knowledge)
     # Variables: pclass, sex, age, sibsp, parch, fare, survived
     # Order: 0=pclass, 1=sex, 2=age, 3=sibsp, 4=parch, 5=fare, 6=survived
     n_vars = 7
     true_graph = np.zeros((n_vars, n_vars))
-    
+
     # Known causal relationships
     true_graph[0, 5] = 1  # pclass -> fare
     true_graph[0, 6] = 1  # pclass -> survived
     true_graph[1, 6] = 1  # sex -> survived
     true_graph[2, 6] = 1  # age -> survived
     true_graph[5, 6] = 1  # fare -> survived
-    
+
     return df, true_graph
 
 
 def load_bnlearn_network(name: str):
     """Load a benchmark network from bnlearn."""
     from pgmpy.utils import get_example_model
-    
+    from sklearn.preprocessing import LabelEncoder
+
     # Map network names to pgmpy examples
     network_map = {
         'asia': 'asia',
@@ -64,29 +78,45 @@ def load_bnlearn_network(name: str):
         'survey': 'survey',
         'child': 'child'
     }
-    
+
     if name.lower() not in network_map:
         raise ValueError(f"Unknown network: {name}")
-    
+
     # Load model
     model = get_example_model(network_map[name.lower()])
-    
+
     # Extract true graph as adjacency matrix
     nodes = sorted(model.nodes())
     n = len(nodes)
     true_graph = np.zeros((n, n))
-    
+
     node_to_idx = {node: i for i, node in enumerate(nodes)}
-    
+
     for edge in model.edges():
         i = node_to_idx[edge[0]]
         j = node_to_idx[edge[1]]
         true_graph[i, j] = 1
-    
+
     # Sample data from model
     data = model.simulate(n_samples=1000, seed=42)
     data = data[nodes]  # Reorder columns
-    
+
+    # Encode all categorical/string columns to numeric
+    for col in data.columns:
+        if data[col].dtype == 'object' or str(data[col].dtype) == 'category':
+            # Use a separate LabelEncoder for each column
+            le = LabelEncoder()
+            data[col] = le.fit_transform(data[col].astype(str))
+
+    # Ensure all data is numeric and convert to float64
+    data = data.apply(pd.to_numeric, errors='coerce')
+
+    # Drop any rows that couldn't be converted (if any)
+    data = data.dropna()
+
+    # Final conversion to float64 for numerical stability
+    data = data.astype(np.float64)
+
     return data, true_graph, nodes
 
 

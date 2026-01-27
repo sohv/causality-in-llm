@@ -1,0 +1,128 @@
+{
+  "dataset": "titanic",
+  "algorithm": "lingam",
+  "gpt5_comparison": {
+    "precision": {
+      "algorithmic_mean": 0.07718408242943846,
+      "algorithmic_ci": [
+        0.06443977344572352,
+        0.0901382535850802
+      ],
+      "llm_range": [
+        0.62,
+        0.76
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "recall": {
+      "algorithmic_mean": 0.23000000000000004,
+      "algorithmic_ci": [
+        0.192,
+        0.27
+      ],
+      "llm_range": [
+        0.55,
+        0.7
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "f1": {
+      "algorithmic_mean": 0.11526006114254869,
+      "algorithmic_ci": [
+        0.09641445294798452,
+        0.13461941405696873
+      ],
+      "llm_range": [
+        0.58,
+        0.73
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "shd": {
+      "algorithmic_mean": 17.55,
+      "algorithmic_ci": [
+        17.09,
+        18.0
+      ],
+      "llm_range": [
+        3.0,
+        7.0
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    }
+  },
+  "deepseek_comparison": {
+    "precision": {
+      "algorithmic_mean": 0.07718408242943846,
+      "algorithmic_ci": [
+        0.06443977344572352,
+        0.0901382535850802
+      ],
+      "llm_range": [
+        0.6,
+        0.7
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "recall": {
+      "algorithmic_mean": 0.23000000000000004,
+      "algorithmic_ci": [
+        0.192,
+        0.27
+      ],
+      "llm_range": [
+        0.6,
+        0.7
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "f1": {
+      "algorithmic_mean": 0.11526006114254869,
+      "algorithmic_ci": [
+        0.09641445294798452,
+        0.13461941405696873
+      ],
+      "llm_range": [
+        0.6,
+        0.7
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    },
+    "shd": {
+      "algorithmic_mean": 17.55,
+      "algorithmic_ci": [
+        17.09,
+        18.0
+      ],
+      "llm_range": [
+        4.0,
+        6.0
+      ],
+      "overlaps": false,
+      "llm_contains_ci": false,
+      "ci_contains_llm": false,
+      "overlap_percentage": 0.0
+    }
+  }
+}

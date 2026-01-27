@@ -47,7 +47,7 @@ class MetricStats:
             'median': float(self.median),
             'min': float(self.min_val),
             'max': float(self.max_val),
-            'n_runs': self.runs
+            'n_runs': int(self.runs)
         }
     
     def overlaps_with_range(self, lower: float, upper: float) -> bool:
@@ -210,10 +210,15 @@ class VarianceAnalyzer:
             try:
                 # Set different random seed for each run
                 np.random.seed(run)
-                
-                # Run LiNGAM
+
+                # Bootstrap sample: randomly sample rows with replacement
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run LiNGAM on bootstrap sample
                 model = lingam.DirectLiNGAM()
-                model.fit(data.values)
+                model.fit(bootstrap_data)
                 learned_graph = (model.adjacency_matrix_ != 0).astype(int)
                 
                 # Compute metrics
@@ -240,42 +245,48 @@ class VarianceAnalyzer:
             shd=compute_metric_stats(shd_vals)
         )
     
-    def run_pc_multiple(self, 
-                       data: pd.DataFrame, 
+    def run_pc_multiple(self,
+                       data: pd.DataFrame,
                        true_graph: np.ndarray,
                        alpha: float = 0.05) -> AlgorithmResults:
-        """Run PC algorithm multiple times with different significance levels and seeds."""
+        """Run PC algorithm multiple times with different significance levels and bootstrap samples."""
         from causallearn.search.ConstraintBased.PC import pc
         from causallearn.utils.cit import fisherz
-        
+
         precision_vals = []
         recall_vals = []
         f1_vals = []
         shd_vals = []
-        
+
         # Vary both random seed AND significance level for true variance
         alphas = np.linspace(0.01, 0.1, self.n_runs)
-        
+
         for run in tqdm(range(self.n_runs), desc="PC runs"):
             try:
                 np.random.seed(run)
-                
-                # Run PC with varying alpha
-                cg = pc(data.values, alpha=alphas[run], indep_test=fisherz)
+
+                # Bootstrap sample: randomly sample rows with replacement
+                # This creates data variance while keeping the same underlying distribution
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run PC with varying alpha on bootstrap sample
+                cg = pc(bootstrap_data, alpha=alphas[run], indep_test=fisherz)
                 learned_graph = cg.G.graph
-                
+
                 # Convert to binary adjacency matrix
                 learned_adj = (np.abs(learned_graph) > 0).astype(int)
-                
+
                 # Compute metrics
                 prec, rec, f1 = compute_precision_recall_f1(true_graph, learned_adj)
                 shd = compute_shd(true_graph, learned_adj)
-                
+
                 precision_vals.append(prec)
                 recall_vals.append(rec)
                 f1_vals.append(f1)
                 shd_vals.append(shd)
-                
+
             except Exception as e:
                 print(f"Run {run} failed: {e}")
                 precision_vals.append(0.0)
@@ -384,15 +395,15 @@ class VarianceAnalyzer:
             llm_lower, llm_upper = llm_estimates[metric]
             
             comparison[metric] = {
-                'algorithmic_mean': stats.mean,
-                'algorithmic_ci': (stats.ci_lower, stats.ci_upper),
-                'llm_range': (llm_lower, llm_upper),
-                'overlaps': stats.overlaps_with_range(llm_lower, llm_upper),
-                'llm_contains_ci': llm_lower <= stats.ci_lower and llm_upper >= stats.ci_upper,
-                'ci_contains_llm': stats.ci_lower <= llm_lower and stats.ci_upper >= llm_upper,
-                'overlap_percentage': self._compute_overlap_percentage(
+                'algorithmic_mean': float(stats.mean),
+                'algorithmic_ci': (float(stats.ci_lower), float(stats.ci_upper)),
+                'llm_range': (float(llm_lower), float(llm_upper)),
+                'overlaps': bool(stats.overlaps_with_range(llm_lower, llm_upper)),
+                'llm_contains_ci': bool(llm_lower <= stats.ci_lower and llm_upper >= stats.ci_upper),
+                'ci_contains_llm': bool(stats.ci_lower <= llm_lower and stats.ci_upper >= llm_upper),
+                'overlap_percentage': float(self._compute_overlap_percentage(
                     stats.ci_lower, stats.ci_upper, llm_lower, llm_upper
-                )
+                ))
             }
         
         return comparison
