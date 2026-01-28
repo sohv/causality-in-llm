@@ -301,53 +301,61 @@ class VarianceAnalyzer:
             shd=compute_metric_stats(shd_vals)
         )
     
-    def run_fci_multiple(self, 
-                        data: pd.DataFrame, 
+    def run_fci_multiple(self,
+                        data: pd.DataFrame,
                         true_graph: np.ndarray,
                         alpha: float = 0.05) -> AlgorithmResults:
-        """Run FCI algorithm multiple times (proxy for PsiFCI without intervention data)."""
+        """Run FCI algorithm multiple times with different significance levels and bootstrap samples."""
         from causallearn.search.ConstraintBased.FCI import fci
         from causallearn.utils.cit import fisherz
-        
+
         precision_vals = []
         recall_vals = []
         f1_vals = []
         shd_vals = []
-        
+
+        # Vary both random seed AND significance level for true variance
         alphas = np.linspace(0.01, 0.1, self.n_runs)
-        
+
         for run in tqdm(range(self.n_runs), desc="FCI runs"):
             try:
                 np.random.seed(run)
-                
-                # Run FCI
-                G, edges = fci(data.values, fisherz, alpha=alphas[run])
-                
+
+                # Bootstrap sample: randomly sample rows with replacement
+                # This creates data variance while keeping the same underlying distribution
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run FCI with varying alpha on bootstrap sample
+                # Convert numpy float to Python float for causal-learn compatibility
+                G, edges = fci(bootstrap_data, fisherz, alpha=float(alphas[run]))
+
                 # Extract skeleton (undirected graph)
                 n = data.shape[1]
                 learned_adj = np.zeros((n, n))
-                
+
                 for i in range(n):
                     for j in range(n):
                         if G.graph[i, j] != 0 or G.graph[j, i] != 0:
                             learned_adj[i, j] = 1
-                
+
                 # Compute metrics (comparing skeletons)
                 prec, rec, f1 = compute_precision_recall_f1(true_graph, learned_adj)
                 shd = compute_shd(true_graph, learned_adj)
-                
+
                 precision_vals.append(prec)
                 recall_vals.append(rec)
                 f1_vals.append(f1)
                 shd_vals.append(shd)
-                
+
             except Exception as e:
                 print(f"Run {run} failed: {e}")
                 precision_vals.append(0.0)
                 recall_vals.append(0.0)
                 f1_vals.append(0.0)
                 shd_vals.append(len(true_graph) ** 2)
-        
+
         return AlgorithmResults(
             precision=compute_metric_stats(precision_vals),
             recall=compute_metric_stats(recall_vals),
