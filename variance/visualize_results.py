@@ -37,10 +37,10 @@ def load_results(results_dir: Path) -> Dict:
     return results
 
 
-def plot_metric_comparison(results: Dict, metric: str, output_dir: Path):
+def plot_metric_comparison(results: Dict, metric: str, output_dir: Path, results_dir: Path = None):
     """
     Create comparison plot for a specific metric across all experiments.
-    
+
     Shows:
     - Algorithmic mean with 95% CI (error bars)
     - LLM prediction range (shaded region)
@@ -49,8 +49,8 @@ def plot_metric_comparison(results: Dict, metric: str, output_dir: Path):
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     axes = axes.flatten()
     
-    datasets = ['titanic_lingam', 'asia_pc', 'cancer_pc', 
-                'earthquake_pc', 'sachs_pc', 'child_pc']
+    datasets = ['titanic_lingam_variance', 'asia_pc_variance', 'cancer_pc_variance',
+                'earthquake_pc_variance', 'sachs_pc_variance', 'child_pc_variance']
     
     for idx, dataset_key in enumerate(datasets):
         ax = axes[idx]
@@ -78,8 +78,12 @@ def plot_metric_comparison(results: Dict, metric: str, output_dir: Path):
                    color='#2E86AB', label='Algorithm (95% CI)')
         
         # Load LLM comparison if available
-        comparison_file = results_dir / f"{dataset_key}_llm_comparison.json"
-        if comparison_file.exists():
+        if results_dir is not None:
+            comparison_file = results_dir / f"{dataset_key}_llm_comparison.json"
+        else:
+            comparison_file = None
+
+        if comparison_file and comparison_file.exists():
             with open(comparison_file, 'r') as f:
                 comp_data = json.load(f)
             
@@ -332,7 +336,7 @@ def main():
     
     # Individual metric comparisons
     for metric in ['precision', 'recall', 'f1', 'shd']:
-        plot_metric_comparison(results, metric, output_dir)
+        plot_metric_comparison(results, metric, output_dir, results_dir)
     
     # Overlap heatmap
     plot_overlap_heatmap(results_dir, output_dir)
