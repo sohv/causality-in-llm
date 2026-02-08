@@ -35,11 +35,6 @@ from llm_integration.qwen_api import QwenClient
 from llm_integration.llama_api import LlamaClient
 from llm_integration.gpt_api import GPTClient
 from llm_integration.deepseek_api import DeepSeekClient
-from prompt_variations.prompt_templates import get_all_formulations, generate_prompt
-from prompt_variations.analyze_prompt_variance import (
-    compare_prompt_formulations,
-    visualize_prompt_variance
-)
 
 
 class MultiLLMRunner:
@@ -105,56 +100,70 @@ class MultiLLMRunner:
         if not self.clients:
             raise RuntimeError("No LLM clients initialized. Set API keys.")
 
+    def load_main_prompt(self, algorithm_name: str, dataset_name: str) -> str:
+        """
+        Load single optimized prompt for algorithm-dataset combination.
+        
+        Args:
+            algorithm_name: Algorithm name (e.g., 'PC', 'LiNGAM')
+            dataset_name: Dataset name (e.g., 'titanic', 'asia')
+            
+        Returns:
+            Prompt text for this combination
+        """
+        main_dir = Path(__file__).parent.parent / 'prompts' / 'main'
+        prompt_file = main_dir / f"{algorithm_name}_{dataset_name}.txt"
+        
+        if prompt_file.exists():
+            with open(prompt_file, 'r') as f:
+                return f.read()
+        else:
+            raise FileNotFoundError(f"Prompt file not found: {prompt_file}")
+
     def run_experiment(self,
                       dataset_name: str,
                       algorithm_name: str,
                       n_samples: int = 1000) -> Dict:
         """
-        Run experiments across all LLMs and all prompt formulations.
+        Run experiments across all LLMs using single optimized prompt.
+        
+        Main experiment approach: Use one expertly-designed prompt per 
+        algorithm-dataset combination to eliminate prompt variation as confound.
 
         Args:
             dataset_name: Name of dataset
             algorithm_name: Name of algorithm
-            n_samples: Number of samples in dataset
+            n_samples: Number of samples in dataset (unused, kept for compatibility)
 
         Returns:
             Dictionary with all results
         """
         print(f"\n{'='*80}")
         print(f"Running Multi-LLM Experiment: {dataset_name} + {algorithm_name}")
+        print(f"Using single optimized prompt (main experiment)")
         print(f"{'='*80}")
 
         all_results = {}
-        formulations = get_all_formulations()
+        
+        # Load the single main prompt
+        try:
+            main_prompt = self.load_main_prompt(algorithm_name, dataset_name)
+        except FileNotFoundError as e:
+            print(f"✗ {e}")
+            return {}
 
         for llm_name, client in self.clients.items():
             print(f"\n--- {llm_name.upper()} ---")
-            llm_results = {}
 
-            for formulation in formulations:
-                print(f"  Testing {formulation.name}...")
+            try:
+                # Query LLM with main prompt
+                parsed = client.query_and_parse(main_prompt, temperature=0.7)
+                all_results[llm_name] = parsed
+                print(f"    ✓ Got results: {list(parsed.keys())}")
 
-                # Generate prompt
-                prompt = generate_prompt(
-                    dataset_name=dataset_name,
-                    algorithm_name=algorithm_name,
-                    formulation=formulation,
-                    n_samples=n_samples
-                )
-
-                try:
-                    # Query LLM
-                    parsed = client.query_and_parse(prompt, temperature=0.7)
-
-                    llm_results[f'formulation_{formulation.formulation_id}'] = parsed
-
-                    print(f"    ✓ Got results: {list(parsed.keys())}")
-
-                except Exception as e:
-                    print(f"    ✗ Error: {e}")
-                    continue
-
-            all_results[llm_name] = llm_results
+            except Exception as e:
+                print(f"    ✗ Error: {e}")
+                continue
 
         # Save raw results
         output_file = self.output_dir / f"{dataset_name}_{algorithm_name}_llm_results.json"
@@ -167,7 +176,7 @@ class MultiLLMRunner:
 
     def generate_comparison_plots(self, all_results: Dict, dataset_name: str, algorithm_name: str):
         """
-        Generate comparison visualizations.
+        Generate comparison visualizations across LLMs.
 
         Args:
             all_results: Results from run_experiment()
@@ -176,15 +185,10 @@ class MultiLLMRunner:
         """
         print(f"\nGenerating comparison plots...")
 
-        # 1. Prompt variance analysis
-        variance_df = compare_prompt_formulations(all_results, dataset_name, algorithm_name)
-
         plots_dir = self.output_dir / "plots"
         plots_dir.mkdir(exist_ok=True)
 
-        visualize_prompt_variance(variance_df, plots_dir)
-
-        # 2. Cross-LLM comparison (averaged across prompts)
+        # Plot cross-LLM comparison
         self._plot_cross_llm_comparison(all_results, plots_dir, dataset_name, algorithm_name)
 
         print(f"✓ Plots saved to {plots_dir}/")
@@ -192,24 +196,19 @@ class MultiLLMRunner:
     def _plot_cross_llm_comparison(self, all_results: Dict, output_dir: Path, dataset: str, algorithm: str):
         """Generate cross-LLM comparison plots."""
 
-        # Extract midpoints for each LLM (averaged across formulations)
+        # Extract midpoints for each LLM 
         llm_midpoints = {}
         metrics = ['precision', 'recall', 'f1', 'shd']
 
-        for llm_name, formulations in all_results.items():
-            midpoints = {m: [] for m in metrics}
-
-            for form_id, results in formulations.items():
-                for metric in metrics:
-                    if metric in results:
-                        lower, upper = results[metric]
-                        midpoints[metric].append((lower + upper) / 2)
-
-            # Average across formulations
-            llm_midpoints[llm_name] = {
-                metric: np.mean(vals) if vals else 0
-                for metric, vals in midpoints.items()
-            }
+        for llm_name, results in all_results.items():
+            llm_midpoints[llm_name] = {}
+            
+            for metric in metrics:
+                if metric in results:
+                    lower, upper = results[metric]
+                    llm_midpoints[llm_name][metric] = (lower + upper) / 2
+                else:
+                    llm_midpoints[llm_name][metric] = 0
 
         # Create comparison bar plots
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -225,18 +224,19 @@ class MultiLLMRunner:
             bars = ax.bar(llms, values, alpha=0.7, color=colors[:len(llms)])
 
             # Add value labels
-            for i, (llm, val) in enumerate(zip(llms, values)):
-                ax.text(i, val + 0.01 * max(values), f'{val:.3f}',
-                       ha='center', va='bottom', fontsize=10, fontweight='bold')
+            if values:
+                for i, (llm, val) in enumerate(zip(llms, values)):
+                    ax.text(i, val + 0.01 * max(values), f'{val:.3f}',
+                           ha='center', va='bottom', fontsize=10, fontweight='bold')
 
             ax.set_ylabel(metric.upper(), fontsize=12)
-            ax.set_title(f'{metric.upper()} Estimates\n(Averaged across prompt formulations)',
+            ax.set_title(f'{metric.upper()} Estimates\n(Single optimized prompt)',
                         fontsize=12, fontweight='bold')
-            ax.set_ylim(0, max(values) * 1.15)
+            ax.set_ylim(0, max(values) * 1.15 if values else 1)
             ax.grid(axis='y', alpha=0.3)
 
         plt.suptitle(f'Cross-LLM Comparison: {dataset.title()} + {algorithm}\n'
-                    f'(Each bar = average of 3 prompt formulations)',
+                    f'(Main experiment: single prompt per combination)',
                     fontsize=14, fontweight='bold')
         plt.tight_layout()
 

@@ -1,0 +1,16 @@
+Performance comparison question:
+
+For PC (Peter-Clark) on Sachs data (medium complexity):
+
+What would represent:
+- GOOD performance ranges?
+- POOR performance ranges?  
+- MOST LIKELY performance ranges?
+
+Your realistic estimates:
+Precision: [?, ?]
+Recall: [?, ?]
+F1: [?, ?]
+SHD: [?, ?]
+
+Why this performance level?

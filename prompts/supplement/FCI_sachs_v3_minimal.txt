@@ -1,0 +1,10 @@
+Algorithm: FCI (Fast Causal Inference)
+Dataset: Sachs (11 vars, 7466 samples)
+
+Predict performance after 100 runs:
+Precision: [?, ?]
+Recall: [?, ?]
+F1: [?, ?] 
+SHD: [?, ?]
+
+Reasoning:

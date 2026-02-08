@@ -1,0 +1,17 @@
+I need your expert prediction on algorithm performance.
+
+I'm testing PC (Peter-Clark) (a Constraint-based method) on Sachs data:
+- 11 variables, 17 true edges
+- 7466 samples, continuous (flow cytometry) 
+- Domain: Biology (Protein Signaling)
+
+Based on your experience, what performance ranges would you expect after 100 test runs?
+
+For each metric, give me your best estimate:
+
+Precision (correct/identified): [?, ?] 
+Recall (correct/true): [?, ?]
+F1-score: [?, ?] 
+SHD (total errors): [?, ?]
+
+Explain your reasoning briefly.
