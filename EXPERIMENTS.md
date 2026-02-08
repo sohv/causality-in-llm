@@ -1,5 +1,9 @@
 # Experiments
 
+## 📊 **Data Sources**
+
+**Real Benchmark Datasets:** All causal benchmark datasets (asia, cancer, earthquake, sachs, survey, child, alarm, insurance, barley) now use **real data from bnlearn** - no simulations. This ensures authentic scientific evaluation.
+
 ## 0. Setup
 
 ```bash
@@ -15,6 +19,9 @@ export QWEN_MODEL="Qwen/Qwen2.5-72B-Instruct"
 export LLAMA_API_KEY="..."
 export LLAMA_BASE_URL="https://api.together.xyz/v1"
 export LLAMA_MODEL="meta-llama/Llama-3.3-70B-Instruct-Turbo"
+export OPENAI_API_KEY="..."  # For GPT-5
+export DEEPSEEK_API_KEY="..."  # For DeepSeek-R1
+export DEEPSEEK_BASE_URL="https://api.deepseek.com"  # Optional override
 ```
 
 ---
@@ -66,6 +73,14 @@ python run_ges_grasp_experiments.py --runs 100 --output results/ --algorithm gra
 ---
 
 ## 2. LLM Experiments (6 LLMs x 3 prompts x 13 datasets x 6 algorithms = 1,404 queries)
+
+**Available LLMs:** 
+1. Claude 3.5 Sonnet (Anthropic)
+2. Gemini 1.5 Pro (Google) 
+3. Qwen 2.5 72B (Alibaba)
+4. Llama 3.3 70B (Meta)
+5. GPT-5 (OpenAI) - **NEW**
+6. DeepSeek-R1 (DeepSeek) - **NEW**
 
 Each command below queries all available LLMs with all 3 prompt formulations (Direct, Step-by-Step, Meta-Knowledge) automatically.
 
@@ -188,7 +203,38 @@ python multi_llm_runner.py --dataset synthetic_30 --algorithm GRaSP --output res
 
 ---
 
-## 3. Visualizations
+## 3. Algorithm vs LLM Comparison Experiments (NEW)
+
+### 3a. Compare specific dataset + algorithm combination
+
+```bash
+python compare_algorithms_vs_llms.py --dataset titanic --algorithm PC
+python compare_algorithms_vs_llms.py --dataset sachs --algorithm LiNGAM
+python compare_algorithms_vs_llms.py --dataset alarm --algorithm FCI
+```
+
+### 3b. Run full comparison across all combinations
+
+```bash
+python compare_algorithms_vs_llms.py --all-combinations
+```
+
+### 3c. Generate comparison visualizations only
+
+```bash
+python compare_algorithms_vs_llms.py --viz-only
+```
+
+**What this does:**
+- Compares algorithm ground truth results vs LLM predictions
+- Calculates prediction accuracy for F1, Precision, Recall metrics  
+- Generates visualizations showing which LLMs predict algorithm performance best
+- Creates detailed reports with accuracy statistics
+- Saves results to `results/comparison/`
+
+---
+
+## 4. Visualizations
 
 ```bash
 python create_paper_visualizations.py
