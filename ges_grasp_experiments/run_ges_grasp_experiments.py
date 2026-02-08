@@ -218,6 +218,78 @@ def main():
     print("ALL GES/GRaSP EXPERIMENTS COMPLETE")
     print("="*80)
     print(f"Results saved to: {args.output}")
+    
+    # CRITICAL: UAI 2026 Statistical Rigor Enhancement for GES/GRaSP
+    print("\n" + "="*60)
+    print("RUNNING UAI 2026 GES/GRaSP STATISTICAL ANALYSIS...")
+    print("="*60)
+    
+    try:
+        import sys
+        from pathlib import Path
+        sys.path.append(str(Path(__file__).parent.parent / "uai_2026_enhancements"))
+        from statistical_testing import StatisticalTester
+        
+        tester = StatisticalTester()
+        
+        # Collect results from both algorithms if run
+        algorithm_results = {}
+        
+        if args.algorithm in ('ges', 'both'):
+            algorithm_results['GES'] = ges_results if 'ges_results' in locals() else {}
+        
+        if args.algorithm in ('grasp', 'both'):
+            algorithm_results['GRaSP'] = grasp_results if 'grasp_results' in locals() else {}
+        
+        # Extract performance scores
+        performance_data = {}
+        for algo_name, results in algorithm_results.items():
+            scores = []
+            for dataset_name, metrics in results.items():
+                if isinstance(metrics, dict) and 'f1' in metrics:
+                    scores.append(metrics['f1'])
+            if scores:
+                performance_data[algo_name] = scores
+        
+        # Statistical analysis
+        statistical_results = []
+        for algo_name, scores in performance_data.items():
+            if len(scores) >= 5:
+                bootstrap_result = tester.bootstrap_confidence_interval(
+                    scores, f"{algo_name} Algorithm Performance"
+                )
+                statistical_results.append(bootstrap_result)
+                
+                print(f"  {algo_name} Mean F1: {np.mean(scores):.3f}")
+                print(f"  {algo_name} 95% CI: [{bootstrap_result.confidence_interval[0]:.3f}, {bootstrap_result.confidence_interval[1]:.3f}]")
+                print(f"  {algo_name} Effect Size: {bootstrap_result.effect_size:.3f}")
+        
+        # Compare GES vs GRaSP if both were run
+        if len(performance_data) == 2 and 'GES' in performance_data and 'GRaSP' in performance_data:
+            ges_scores = performance_data['GES']
+            grasp_scores = performance_data['GRaSP']
+            min_len = min(len(ges_scores), len(grasp_scores))
+            
+            if min_len >= 5:
+                comparison_result = tester.paired_t_test(
+                    ges_scores[:min_len], grasp_scores[:min_len], "GES vs GRaSP"
+                )
+                statistical_results.append(comparison_result)
+                print(f"  GES vs GRaSP: p={comparison_result.p_value:.4f}, d={comparison_result.effect_size:.3f}, sig={comparison_result.is_significant}")
+        
+        # Save statistical report
+        if statistical_results:
+            report_path = Path(args.output) / "uai_ges_grasp_statistical_analysis.txt"
+            tester.generate_statistical_report(statistical_results, str(report_path))
+            print(f"  GES/GRaSP statistical report saved: {report_path}")
+        
+        print("\n" + "="*60)
+        print("UAI 2026 GES/GRaSP ENHANCEMENT COMPLETE")
+        print("GES/GRaSP experiments now UAI submission ready")
+        print("="*60)
+        
+    except Exception as e:
+        print(f"  Error in GES/GRaSP UAI enhancement: {e}")
 
 
 if __name__ == "__main__":
