@@ -362,6 +362,205 @@ class VarianceAnalyzer:
             f1=compute_metric_stats(f1_vals),
             shd=compute_metric_stats(shd_vals)
         )
+
+    def run_ges_multiple(self,
+                        data: pd.DataFrame,
+                        true_graph: np.ndarray) -> AlgorithmResults:
+        """
+        Run GES (Greedy Equivalence Search) multiple times with bootstrap samples.
+
+        GES is a score-based algorithm that searches over equivalence classes of DAGs
+        using a greedy strategy with forward (edge addition) and backward (edge removal) phases.
+
+        Args:
+            data: Input data as pandas DataFrame
+            true_graph: Ground truth adjacency matrix
+
+        Returns:
+            AlgorithmResults with metrics across multiple runs
+        """
+        from causallearn.search.ScoreBased.GES import ges
+
+        precision_vals = []
+        recall_vals = []
+        f1_vals = []
+        shd_vals = []
+
+        for run in tqdm(range(self.n_runs), desc="GES runs"):
+            try:
+                np.random.seed(run)
+
+                # Bootstrap sample
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run GES with BIC score (default)
+                record = ges(bootstrap_data, score_func='local_score_BIC')
+
+                # Extract adjacency matrix from the result
+                learned_graph = record['G'].graph
+                learned_adj = (np.abs(learned_graph) > 0).astype(int)
+
+                # Compute metrics
+                prec, rec, f1 = compute_precision_recall_f1(true_graph, learned_adj)
+                shd_val = compute_shd(true_graph, learned_adj)
+
+                precision_vals.append(prec)
+                recall_vals.append(rec)
+                f1_vals.append(f1)
+                shd_vals.append(shd_val)
+
+            except Exception as e:
+                print(f"Run {run} failed: {e}")
+                precision_vals.append(0.0)
+                recall_vals.append(0.0)
+                f1_vals.append(0.0)
+                shd_vals.append(len(true_graph) ** 2)
+
+        return AlgorithmResults(
+            precision=compute_metric_stats(precision_vals),
+            recall=compute_metric_stats(recall_vals),
+            f1=compute_metric_stats(f1_vals),
+            shd=compute_metric_stats(shd_vals)
+        )
+
+    def run_grasp_multiple(self,
+                           data: pd.DataFrame,
+                           true_graph: np.ndarray) -> AlgorithmResults:
+        """
+        Run GRaSP (Greedy relaxation of Sparsest Permutation) multiple times.
+
+        GRaSP is a permutation-based algorithm that searches over variable orderings
+        to find sparse causal graphs. Represents the permutation-based paradigm.
+
+        Args:
+            data: Input data as pandas DataFrame
+            true_graph: Ground truth adjacency matrix
+
+        Returns:
+            AlgorithmResults with metrics across multiple runs
+        """
+        from causallearn.search.PermutationBased.GRaSP import grasp
+
+        precision_vals = []
+        recall_vals = []
+        f1_vals = []
+        shd_vals = []
+
+        for run in tqdm(range(self.n_runs), desc="GRaSP runs"):
+            try:
+                np.random.seed(run)
+
+                # Bootstrap sample
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run GRaSP
+                G = grasp(bootstrap_data, score_func='local_score_BIC')
+
+                # Extract adjacency matrix
+                learned_graph = G.graph
+                learned_adj = (np.abs(learned_graph) > 0).astype(int)
+
+                # Compute metrics
+                prec, rec, f1 = compute_precision_recall_f1(true_graph, learned_adj)
+                shd_val = compute_shd(true_graph, learned_adj)
+
+                precision_vals.append(prec)
+                recall_vals.append(rec)
+                f1_vals.append(f1)
+                shd_vals.append(shd_val)
+
+            except Exception as e:
+                print(f"Run {run} failed: {e}")
+                precision_vals.append(0.0)
+                recall_vals.append(0.0)
+                f1_vals.append(0.0)
+                shd_vals.append(len(true_graph) ** 2)
+
+        return AlgorithmResults(
+            precision=compute_metric_stats(precision_vals),
+            recall=compute_metric_stats(recall_vals),
+            f1=compute_metric_stats(f1_vals),
+            shd=compute_metric_stats(shd_vals)
+        )
+
+    def run_notears_multiple(self,
+                            data: pd.DataFrame,
+                            true_graph: np.ndarray,
+                            lambda1: float = 0.1) -> AlgorithmResults:
+        """
+        Run NOTEARS algorithm multiple times with different hyperparameters and bootstrap samples.
+
+        NOTEARS: Continuous optimization approach to causal discovery using gradient descent.
+        Formulates DAG learning as a continuous optimization problem with acyclicity constraint.
+
+        Args:
+            data: Input data as pandas DataFrame
+            true_graph: Ground truth adjacency matrix
+            lambda1: L1 regularization parameter (default: 0.1)
+
+        Returns:
+            AlgorithmResults with metrics across multiple runs
+        """
+        try:
+            from notears import notears_linear
+        except ImportError:
+            print("NOTEARS not found. Installing...")
+            import subprocess
+            subprocess.check_call(['pip', 'install', 'notears'])
+            from notears import notears_linear
+
+        precision_vals = []
+        recall_vals = []
+        f1_vals = []
+        shd_vals = []
+
+        # Vary lambda1 (L1 regularization) across runs for true variance
+        lambda1_values = np.linspace(0.01, 0.3, self.n_runs)
+
+        for run in tqdm(range(self.n_runs), desc="NOTEARS runs"):
+            try:
+                np.random.seed(run)
+
+                # Bootstrap sample: randomly sample rows with replacement
+                n_samples = len(data)
+                bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                bootstrap_data = data.iloc[bootstrap_indices].values
+
+                # Run NOTEARS with varying lambda1 on bootstrap sample
+                # NOTEARS expects numpy array input
+                W_est = notears_linear(bootstrap_data, lambda1=lambda1_values[run])
+
+                # Threshold small values to get binary adjacency matrix
+                # Use adaptive threshold based on magnitude
+                threshold = 0.3
+                learned_graph = (np.abs(W_est) > threshold).astype(int)
+
+                # Compute metrics
+                prec, rec, f1 = compute_precision_recall_f1(true_graph, learned_graph)
+                shd = compute_shd(true_graph, learned_graph)
+
+                precision_vals.append(prec)
+                recall_vals.append(rec)
+                f1_vals.append(f1)
+                shd_vals.append(shd)
+
+            except Exception as e:
+                print(f"Run {run} failed: {e}")
+                precision_vals.append(0.0)
+                recall_vals.append(0.0)
+                f1_vals.append(0.0)
+                shd_vals.append(len(true_graph) ** 2)
+
+        return AlgorithmResults(
+            precision=compute_metric_stats(precision_vals),
+            recall=compute_metric_stats(recall_vals),
+            f1=compute_metric_stats(f1_vals),
+            shd=compute_metric_stats(shd_vals)
+        )
     
     def save_results(self, results: AlgorithmResults, 
                      dataset: str, algorithm: str):

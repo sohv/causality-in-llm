@@ -4,14 +4,34 @@ Run all experiments from the paper with proper variance analysis.
 
 This script reproduces all experiments but with 100 runs per algorithm
 to establish proper confidence intervals.
+
+Coverage:
+- 13 datasets: Titanic, Sachs, Alarm, Stock Market, Insurance, Barley,
+  Asia, Cancer, Earthquake, Survey, Child, Synthetic-12, Synthetic-30
+- 6 algorithms: PC, LiNGAM, FCI, NOTEARS, GES, GRaSP
+- Total: 13 datasets x 6 algorithms x 100 runs = 7,800 algorithmic runs
 """
 
+import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import networkx as nx
 from variance_analysis import VarianceAnalyzer
 import json
+
+# Add datasets to path
+sys.path.append(str(Path(__file__).parent.parent / "datasets"))
+
+try:
+    from alarm_network import load_alarm
+    from stock_market import load_stock_market
+    from insurance_network import load_insurance
+    from barley_network import load_barley
+    NEW_DATASETS_AVAILABLE = True
+except ImportError:
+    print("Warning: New datasets not available. Run from project root.")
+    NEW_DATASETS_AVAILABLE = False
 
 # ============================================================================
 # Dataset Loaders
@@ -65,14 +85,21 @@ def load_titanic():
 
 
 def load_bnlearn_network(name: str):
-    """Load a benchmark network from bnlearn."""
-    from pgmpy.utils import get_example_model
+    """Load a benchmark network from bnlearn with real datasets only."""
+    try:
+        import bnlearn as bn
+    except ImportError:
+        print("Installing bnlearn...")
+        import subprocess
+        subprocess.check_call(['pip', 'install', 'bnlearn'])
+        import bnlearn as bn
+    
     from sklearn.preprocessing import LabelEncoder
 
-    # Map network names to pgmpy examples
+    # Map network names to bnlearn dataset names
     network_map = {
         'asia': 'asia',
-        'cancer': 'cancer',
+        'cancer': 'cancer', 
         'earthquake': 'earthquake',
         'sachs': 'sachs',
         'survey': 'survey',
@@ -82,30 +109,47 @@ def load_bnlearn_network(name: str):
     if name.lower() not in network_map:
         raise ValueError(f"Unknown network: {name}")
 
-    # Load model
-    model = get_example_model(network_map[name.lower()])
-
+    dataset_name = network_map[name.lower()]
+    
+    # Load the actual dataset and DAG from bnlearn
+    print(f"Loading real {dataset_name} dataset from bnlearn...")
+    dag = bn.import_DAG(dataset_name)
+    
+    # Get the real data associated with this network
+    real_data = bn.import_example(dataset_name)
+    if real_data is not None and hasattr(real_data, 'keys') and 'df' in real_data:
+        data = real_data['df']
+        print(f"Using real {dataset_name} dataset with {len(data)} samples")
+    elif real_data is not None and isinstance(real_data, pd.DataFrame):
+        data = real_data
+        print(f"Using real {dataset_name} dataset with {len(data)} samples")
+    else:
+        raise ValueError(f"No real data available for {dataset_name} in bnlearn")
+    
     # Extract true graph as adjacency matrix
-    nodes = sorted(model.nodes())
+    nodes = sorted(dag['model'].nodes())
     n = len(nodes)
     true_graph = np.zeros((n, n))
 
     node_to_idx = {node: i for i, node in enumerate(nodes)}
 
-    for edge in model.edges():
-        i = node_to_idx[edge[0]]
+    for edge in dag['model'].edges():
+        i = node_to_idx[edge[0]] 
         j = node_to_idx[edge[1]]
         true_graph[i, j] = 1
 
-    # Sample data from model
-    data = model.simulate(n_samples=1000, seed=42)
-    data = data[nodes]  # Reorder columns
+    # Ensure data has the right column order
+    if isinstance(data, pd.DataFrame):
+        data = data[nodes]  # Reorder columns
+    else:
+        # Convert to DataFrame if it's not already
+        data = pd.DataFrame(data, columns=nodes)
 
     # Encode all categorical/string columns to numeric
     for col in data.columns:
         if data[col].dtype == 'object' or str(data[col].dtype) == 'category':
             # Use a separate LabelEncoder for each column
-            le = LabelEncoder()
+            le = LabelEncoder()  
             data[col] = le.fit_transform(data[col].astype(str))
 
     # Ensure all data is numeric and convert to float64
@@ -165,160 +209,160 @@ def generate_synthetic_dag(n_nodes: int, edge_prob: float = 0.2, seed: int = 42)
 # ============================================================================
 
 def run_titanic_experiments(analyzer: VarianceAnalyzer):
-    """Run Titanic + LiNGAM experiments."""
+    """Run ALL 6 algorithms on Titanic dataset."""
     print("\n" + "="*80)
-    print("TITANIC DATASET - LiNGAM")
+    print("TITANIC DATASET - ALL ALGORITHMS")
     print("="*80)
-    
+
     data, true_graph = load_titanic()
     print(f"Loaded Titanic: {data.shape[0]} samples, {data.shape[1]} variables")
-    
-    # Run LiNGAM with variance analysis
-    results = analyzer.run_lingam_multiple(data, true_graph)
-    
-    # Print summary
-    print("\n--- Algorithm Performance (Mean ± 95% CI) ---")
-    print(f"Precision: {results.precision.mean:.4f} "
-          f"[{results.precision.ci_lower:.4f}, {results.precision.ci_upper:.4f}]")
-    print(f"Recall:    {results.recall.mean:.4f} "
-          f"[{results.recall.ci_lower:.4f}, {results.recall.ci_upper:.4f}]")
-    print(f"F1-score:  {results.f1.mean:.4f} "
-          f"[{results.f1.ci_lower:.4f}, {results.f1.ci_upper:.4f}]")
-    print(f"SHD:       {results.shd.mean:.1f} "
-          f"[{results.shd.ci_lower:.1f}, {results.shd.ci_upper:.1f}]")
-    
-    # Compare with LLM estimates from paper
-    llm_estimates_gpt5 = {
-        'precision': (0.62, 0.76),
-        'recall': (0.55, 0.70),
-        'f1': (0.58, 0.73),
-        'shd': (3, 7)
-    }
-    
-    llm_estimates_deepseek = {
-        'precision': (0.60, 0.70),
-        'recall': (0.60, 0.70),
-        'f1': (0.60, 0.70),
-        'shd': (4, 6)
-    }
-    
-    print("\n--- Comparison with GPT-5 Estimates ---")
-    comparison_gpt5 = analyzer.compare_with_llm_estimates(results, llm_estimates_gpt5)
-    for metric, comp in comparison_gpt5.items():
-        overlap = "✓" if comp['overlaps'] else "✗"
-        print(f"{metric:10s}: {overlap} Overlap: {comp['overlap_percentage']:.1f}%")
-    
-    print("\n--- Comparison with DeepSeek R1 Estimates ---")
-    comparison_deepseek = analyzer.compare_with_llm_estimates(results, llm_estimates_deepseek)
-    for metric, comp in comparison_deepseek.items():
-        overlap = "✓" if comp['overlaps'] else "✗"
-        print(f"{metric:10s}: {overlap} Overlap: {comp['overlap_percentage']:.1f}%")
-    
-    # Save results
-    analyzer.save_results(results, 'titanic', 'lingam')
-    
-    # Save comparisons
-    comparison_data = {
-        'dataset': 'titanic',
-        'algorithm': 'lingam',
-        'gpt5_comparison': comparison_gpt5,
-        'deepseek_comparison': comparison_deepseek
-    }
-    
-    with open(analyzer.output_dir / 'titanic_lingam_llm_comparison.json', 'w') as f:
-        json.dump(comparison_data, f, indent=2)
-    
-    return results
+
+    all_results = {}
+    run_all_algorithms_on_dataset(analyzer, data, true_graph, 'titanic', all_results)
+
+    return all_results
+
+
+def run_all_algorithms_on_dataset(analyzer: VarianceAnalyzer, data, true_graph, dataset_name: str, all_results: dict):
+    """Run all 6 algorithms on a single dataset."""
+    algorithms = [
+        ('pc', analyzer.run_pc_multiple),
+        ('lingam', analyzer.run_lingam_multiple),
+        ('fci', analyzer.run_fci_multiple),
+        ('notears', analyzer.run_notears_multiple),
+        ('ges', analyzer.run_ges_multiple),
+        ('grasp', analyzer.run_grasp_multiple),
+    ]
+
+    for algo_name, algo_fn in algorithms:
+        print(f"\n--- Running {algo_name.upper()} Algorithm ---")
+        try:
+            results = algo_fn(data, true_graph)
+            print(f"{algo_name.upper()} - Precision: {results.precision.mean:.4f} "
+                  f"[{results.precision.ci_lower:.4f}, {results.precision.ci_upper:.4f}]")
+            print(f"{algo_name.upper()} - Recall:    {results.recall.mean:.4f} "
+                  f"[{results.recall.ci_lower:.4f}, {results.recall.ci_upper:.4f}]")
+            print(f"{algo_name.upper()} - F1:        {results.f1.mean:.4f} "
+                  f"[{results.f1.ci_lower:.4f}, {results.f1.ci_upper:.4f}]")
+            print(f"{algo_name.upper()} - SHD:       {results.shd.mean:.1f} "
+                  f"[{results.shd.ci_lower:.1f}, {results.shd.ci_upper:.1f}]")
+            analyzer.save_results(results, dataset_name, algo_name)
+            all_results[f"{dataset_name}_{algo_name}"] = results
+        except Exception as e:
+            print(f"{algo_name.upper()} failed on {dataset_name}: {e}")
+
+    return all_results
 
 
 def run_benchmark_experiments(analyzer: VarianceAnalyzer):
-    """Run experiments on bnlearn benchmark networks."""
+    """Run ALL 6 algorithms on bnlearn benchmark networks."""
     benchmarks = ['asia', 'cancer', 'earthquake', 'sachs', 'survey', 'child']
-    
+
     all_results = {}
-    
+
     for bench_name in benchmarks:
         print("\n" + "="*80)
         print(f"BENCHMARK: {bench_name.upper()}")
         print("="*80)
-        
+
         try:
             data, true_graph, nodes = load_bnlearn_network(bench_name)
             print(f"Loaded {bench_name}: {len(nodes)} nodes, {data.shape[0]} samples")
-            
-            # Run PC algorithm (constraint-based)
-            print("\n--- Running PC Algorithm ---")
-            results_pc = analyzer.run_pc_multiple(data, true_graph)
-            
-            print(f"PC - Precision: {results_pc.precision.mean:.4f} "
-                  f"[{results_pc.precision.ci_lower:.4f}, {results_pc.precision.ci_upper:.4f}]")
-            print(f"PC - Recall:    {results_pc.recall.mean:.4f} "
-                  f"[{results_pc.recall.ci_lower:.4f}, {results_pc.recall.ci_upper:.4f}]")
-            print(f"PC - F1:        {results_pc.f1.mean:.4f} "
-                  f"[{results_pc.f1.ci_lower:.4f}, {results_pc.f1.ci_upper:.4f}]")
-            print(f"PC - SHD:       {results_pc.shd.mean:.1f} "
-                  f"[{results_pc.shd.ci_lower:.1f}, {results_pc.shd.ci_upper:.1f}]")
-            
-            analyzer.save_results(results_pc, bench_name, 'pc')
-            all_results[f"{bench_name}_pc"] = results_pc
-            
-            # Run LiNGAM (will likely fail on discrete data - showing assumption violations)
-            print("\n--- Running LiNGAM Algorithm ---")
-            results_lingam = analyzer.run_lingam_multiple(data, true_graph)
-            
-            print(f"LiNGAM - Precision: {results_lingam.precision.mean:.4f} "
-                  f"[{results_lingam.precision.ci_lower:.4f}, {results_lingam.precision.ci_upper:.4f}]")
-            print(f"LiNGAM - SHD:       {results_lingam.shd.mean:.1f} "
-                  f"[{results_lingam.shd.ci_lower:.1f}, {results_lingam.shd.ci_upper:.1f}]")
-            
-            analyzer.save_results(results_lingam, bench_name, 'lingam')
-            all_results[f"{bench_name}_lingam"] = results_lingam
-            
+
+            run_all_algorithms_on_dataset(analyzer, data, true_graph, bench_name, all_results)
+
         except Exception as e:
             print(f"Error processing {bench_name}: {e}")
             continue
-    
+
     return all_results
 
 
 def run_synthetic_experiments(analyzer: VarianceAnalyzer):
-    """Run experiments on synthetic DAGs."""
+    """Run ALL 6 algorithms on synthetic DAGs."""
     node_counts = [12, 30]
-    
+
     all_results = {}
-    
+
     for n_nodes in node_counts:
         print("\n" + "="*80)
         print(f"SYNTHETIC DAG - {n_nodes} NODES")
         print("="*80)
-        
+
         data, true_graph = generate_synthetic_dag(n_nodes, edge_prob=0.2)
         print(f"Generated DAG: {n_nodes} nodes, {np.sum(true_graph)} edges")
-        
-        # Run PC
-        print("\n--- Running PC Algorithm ---")
-        results_pc = analyzer.run_pc_multiple(data, true_graph)
-        
-        print(f"PC - Precision: {results_pc.precision.mean:.4f} "
-              f"[{results_pc.precision.ci_lower:.4f}, {results_pc.precision.ci_upper:.4f}]")
-        print(f"PC - SHD:       {results_pc.shd.mean:.1f} "
-              f"[{results_pc.shd.ci_lower:.1f}, {results_pc.shd.ci_upper:.1f}]")
-        
-        analyzer.save_results(results_pc, f'synthetic_{n_nodes}', 'pc')
-        all_results[f"synthetic_{n_nodes}_pc"] = results_pc
-        
-        # Run LiNGAM
-        print("\n--- Running LiNGAM Algorithm ---")
-        results_lingam = analyzer.run_lingam_multiple(data, true_graph)
-        
-        print(f"LiNGAM - Precision: {results_lingam.precision.mean:.4f} "
-              f"[{results_lingam.precision.ci_lower:.4f}, {results_lingam.precision.ci_upper:.4f}]")
-        print(f"LiNGAM - SHD:       {results_lingam.shd.mean:.1f} "
-              f"[{results_lingam.shd.ci_lower:.1f}, {results_lingam.shd.ci_upper:.1f}]")
-        
-        analyzer.save_results(results_lingam, f'synthetic_{n_nodes}', 'lingam')
-        all_results[f"synthetic_{n_nodes}_lingam"] = results_lingam
-    
+
+        dataset_name = f'synthetic_{n_nodes}'
+        run_all_algorithms_on_dataset(analyzer, data, true_graph, dataset_name, all_results)
+
+    return all_results
+
+
+def run_new_datasets_experiments(analyzer: VarianceAnalyzer):
+    """Run ALL 6 algorithms on NEW datasets: Alarm, Stock Market, Insurance, Barley."""
+
+    if not NEW_DATASETS_AVAILABLE:
+        print("\nSkipping new datasets (import failed)")
+        return {}
+
+    all_results = {}
+
+    # ========================================================================
+    # Alarm Network (Medical, 37 nodes)
+    # ========================================================================
+    print("\n" + "="*80)
+    print("ALARM NETWORK - Medical ICU Monitoring (37 nodes)")
+    print("="*80)
+
+    try:
+        data, true_graph, node_names = load_alarm(n_samples=5000)
+        print(f"Loaded Alarm: {len(node_names)} nodes, {np.sum(true_graph)} edges")
+        run_all_algorithms_on_dataset(analyzer, data, true_graph, 'alarm', all_results)
+    except Exception as e:
+        print(f"Error with Alarm network: {e}")
+
+    # ========================================================================
+    # Stock Market (Finance, 10 nodes)
+    # ========================================================================
+    print("\n" + "="*80)
+    print("STOCK MARKET - Financial Causal Relationships (10 nodes)")
+    print("="*80)
+
+    try:
+        data, true_graph, var_names = load_stock_market(n_samples=1000)
+        print(f"Loaded Stock Market: {len(var_names)} variables, {np.sum(true_graph)} edges")
+        run_all_algorithms_on_dataset(analyzer, data, true_graph, 'stock_market', all_results)
+    except Exception as e:
+        print(f"Error with Stock Market dataset: {e}")
+
+    # ========================================================================
+    # Insurance Network (Insurance, 27 nodes) - NEW
+    # ========================================================================
+    print("\n" + "="*80)
+    print("INSURANCE NETWORK - Risk Assessment (27 nodes)")
+    print("="*80)
+
+    try:
+        data, true_graph, node_names = load_insurance(n_samples=2000)
+        print(f"Loaded Insurance: {len(node_names)} nodes, {np.sum(true_graph)} edges")
+        run_all_algorithms_on_dataset(analyzer, data, true_graph, 'insurance', all_results)
+    except Exception as e:
+        print(f"Error with Insurance network: {e}")
+
+    # ========================================================================
+    # Barley Network (Agriculture, 48 nodes) - NEW
+    # ========================================================================
+    print("\n" + "="*80)
+    print("BARLEY NETWORK - Agricultural Crop Production (48 nodes)")
+    print("="*80)
+
+    try:
+        data, true_graph, node_names = load_barley(n_samples=3000)
+        print(f"Loaded Barley: {len(node_names)} nodes, {np.sum(true_graph)} edges")
+        run_all_algorithms_on_dataset(analyzer, data, true_graph, 'barley', all_results)
+    except Exception as e:
+        print(f"Error with Barley network: {e}")
+
     return all_results
 
 
@@ -328,45 +372,53 @@ def run_synthetic_experiments(analyzer: VarianceAnalyzer):
 
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Run all causal discovery experiments")
     parser.add_argument('--runs', type=int, default=100,
                        help='Number of runs per algorithm')
     parser.add_argument('--output', type=str, default='results',
                        help='Output directory')
-    parser.add_argument('--experiments', nargs='+', 
-                       choices=['titanic', 'benchmarks', 'synthetic', 'all'],
+    parser.add_argument('--experiments', nargs='+',
+                       choices=['titanic', 'benchmarks', 'synthetic', 'new_datasets', 'all'],
                        default=['all'],
                        help='Which experiments to run')
-    
+
     args = parser.parse_args()
-    
+
     # Initialize analyzer
     analyzer = VarianceAnalyzer(n_runs=args.runs, output_dir=args.output)
-    
+
     print("="*80)
-    print("CAUSAL DISCOVERY VARIANCE ANALYSIS")
+    print("CAUSAL DISCOVERY VARIANCE ANALYSIS (UPDATED)")
     print("="*80)
     print(f"Runs per algorithm: {args.runs}")
     print(f"Output directory: {args.output}")
+    if NEW_DATASETS_AVAILABLE:
+        print("✓ New datasets available: Alarm Network, Stock Market")
+    else:
+        print("✗ New datasets not available")
     print()
-    
+
     results = {}
-    
+
     if 'all' in args.experiments or 'titanic' in args.experiments:
         results['titanic'] = run_titanic_experiments(analyzer)
-    
+
     if 'all' in args.experiments or 'benchmarks' in args.experiments:
         results['benchmarks'] = run_benchmark_experiments(analyzer)
-    
+
     if 'all' in args.experiments or 'synthetic' in args.experiments:
         results['synthetic'] = run_synthetic_experiments(analyzer)
-    
+
+    if 'all' in args.experiments or 'new_datasets' in args.experiments:
+        results['new_datasets'] = run_new_datasets_experiments(analyzer)
+
     print("\n" + "="*80)
     print("ALL EXPERIMENTS COMPLETE")
     print("="*80)
     print(f"Results saved to: {args.output}/")
-    
+    print(f"\nTotal experiments run: {sum(len(v) if isinstance(v, dict) else 1 for v in results.values())}")
+
     return results
 
 

@@ -1,6 +1,7 @@
 lingam
 category_encoders
 graphviz
+
 # Core causal discovery libraries
 causal-learn
 networkx
@@ -10,6 +11,7 @@ scipy
 
 # Benchmarking datasets
 pgmpy
+bnlearn
 
 # Visualization
 matplotlib
@@ -22,3 +24,20 @@ lightgbm
 # Utilities
 tqdm
 joblib
+
+# NEW: Modern algorithms (3 critical fixes)
+# NOTEARS - Continuous optimization for causal discovery
+# Install from source if pip fails:
+# pip install git+https://github.com/xunzheng/notears.git
+notears
+
+# NEW: LLM API clients (3 critical fixes)
+# Claude 3.5 Sonnet (Anthropic)
+anthropic
+
+# Gemini 1.5 Pro (Google)
+google-generativeai
+
+# For GPT-5, DeepSeek, Qwen (via Together/DashScope), and Llama (via Together/Groq)
+# OpenAI-compatible client used by Qwen and Llama integrations
+openai

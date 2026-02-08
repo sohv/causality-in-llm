@@ -24,6 +24,7 @@ from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "variance"))
+sys.path.append(str(Path(__file__).parent.parent / "datasets"))
 
 import numpy as np
 import pandas as pd
@@ -34,6 +35,12 @@ from run_experiments import (
     load_bnlearn_network,
     generate_synthetic_dag
 )
+
+# Import new datasets
+from alarm_network import load_alarm
+from stock_market import load_stock_market
+from insurance_network import load_insurance
+from barley_network import load_barley
 
 # ============================================================================
 # FCI Experiment Runners (matching PC/LiNGAM structure)
@@ -181,6 +188,47 @@ def run_fci_synthetic_experiments(analyzer: VarianceAnalyzer):
     return all_results
 
 
+def run_fci_new_datasets(analyzer: VarianceAnalyzer):
+    """Run FCI on new datasets: Alarm, Stock Market, Insurance, Barley."""
+    all_results = {}
+
+    new_datasets = [
+        ('alarm', lambda: load_alarm(n_samples=5000), 'Medical ICU Monitoring'),
+        ('stock_market', lambda: load_stock_market(n_samples=1000), 'Financial Relationships'),
+        ('insurance', lambda: load_insurance(n_samples=2000), 'Insurance Risk Assessment'),
+        ('barley', lambda: load_barley(n_samples=3000), 'Agricultural Crop Production'),
+    ]
+
+    for ds_name, loader, description in new_datasets:
+        print("\n" + "="*80)
+        print(f"{ds_name.upper()} - FCI")
+        print("="*80)
+
+        try:
+            data, true_graph, nodes = loader()
+            print(f"Loaded {ds_name}: {len(nodes)} nodes, {data.shape[0]} samples")
+
+            results = analyzer.run_fci_multiple(data, true_graph)
+
+            print(f"FCI - Precision: {results.precision.mean:.4f} "
+                  f"[{results.precision.ci_lower:.4f}, {results.precision.ci_upper:.4f}]")
+            print(f"FCI - Recall:    {results.recall.mean:.4f} "
+                  f"[{results.recall.ci_lower:.4f}, {results.recall.ci_upper:.4f}]")
+            print(f"FCI - F1:        {results.f1.mean:.4f} "
+                  f"[{results.f1.ci_lower:.4f}, {results.f1.ci_upper:.4f}]")
+            print(f"FCI - SHD:       {results.shd.mean:.1f} "
+                  f"[{results.shd.ci_lower:.1f}, {results.shd.ci_upper:.1f}]")
+
+            analyzer.save_results(results, ds_name, 'fci')
+            all_results[f"{ds_name}_fci"] = results
+
+        except Exception as e:
+            print(f"Error processing {ds_name}: {e}")
+            continue
+
+    return all_results
+
+
 # ============================================================================
 # LLM Prompt Generation
 # ============================================================================
@@ -287,7 +335,7 @@ def main():
     parser.add_argument('--output', type=str, default='fci_results',
                        help='Output directory (default: fci_results)')
     parser.add_argument('--experiments', nargs='+',
-                       choices=['titanic', 'benchmarks', 'synthetic', 'all'],
+                       choices=['titanic', 'benchmarks', 'synthetic', 'new_datasets', 'all'],
                        default=['all'],
                        help='Which experiments to run (default: all)')
 
@@ -321,6 +369,9 @@ def main():
 
     if 'all' in args.experiments or 'synthetic' in args.experiments:
         results['synthetic'] = run_fci_synthetic_experiments(analyzer)
+
+    if 'all' in args.experiments or 'new_datasets' in args.experiments:
+        results['new_datasets'] = run_fci_new_datasets(analyzer)
 
     print("\n" + "="*80)
     print("ALL FCI EXPERIMENTS COMPLETE")
