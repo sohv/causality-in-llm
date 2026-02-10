@@ -1,0 +1,381 @@
+{
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "trait": "formality",
+  "alphas": [
+    0.0,
+    0.5,
+    1.0,
+    2.0
+  ],
+  "n_seeds": 10,
+  "alpha_results": {
+    "alpha_0.0": {
+      "alpha": 0.0,
+      "seeds": [
+        {
+          "seed": 0,
+          "mean_v": 0.939728711048762,
+          "mean_v_perp": 0.9402965545654297,
+          "effect_diff": 0.0005678435166677209,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 1,
+          "mean_v": 0.9195529341697692,
+          "mean_v_perp": 0.9435001929601033,
+          "effect_diff": 0.023947258790334103,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 2,
+          "mean_v": 0.9157207270463308,
+          "mean_v_perp": 0.9672036528587341,
+          "effect_diff": 0.051482925812403324,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 3,
+          "mean_v": 0.9320184667905171,
+          "mean_v_perp": 0.9089734156926473,
+          "effect_diff": 0.023045051097869806,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 4,
+          "mean_v": 0.9381254394849141,
+          "mean_v_perp": 0.9366373459498087,
+          "effect_diff": 0.0014880935351053726,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 5,
+          "mean_v": 0.9592685699462891,
+          "mean_v_perp": 0.9362236837546031,
+          "effect_diff": 0.023044886191685987,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 6,
+          "mean_v": 0.9402810593446096,
+          "mean_v_perp": 0.9349476794401804,
+          "effect_diff": 0.00533337990442917,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 7,
+          "mean_v": 0.9457580626010895,
+          "mean_v_perp": 0.9290200372536978,
+          "effect_diff": 0.01673802534739177,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 8,
+          "mean_v": 0.9518058717250824,
+          "mean_v_perp": 0.9190418561299641,
+          "effect_diff": 0.03276401559511821,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 9,
+          "mean_v": 0.9511819859345754,
+          "mean_v_perp": 0.9119222501913706,
+          "effect_diff": 0.03925973574320474,
+          "samples_v": 30,
+          "samples_perp": 30
+        }
+      ],
+      "summary": {
+        "mean_effect_diff": 0.02176712155342102,
+        "std_effect_diff": 0.015728887682098656,
+        "min_effect_diff": 0.0005678435166677209,
+        "max_effect_diff": 0.051482925812403324
+      }
+    },
+    "alpha_0.5": {
+      "alpha": 0.5,
+      "seeds": [
+        {
+          "seed": 0,
+          "mean_v": 0.9312542796134948,
+          "mean_v_perp": 0.9367372532685597,
+          "effect_diff": 0.005482973655064893,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 1,
+          "mean_v": 0.9243374327818553,
+          "mean_v_perp": 0.9196012039979299,
+          "effect_diff": 0.0047362287839254336,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 2,
+          "mean_v": 0.9504746814568837,
+          "mean_v_perp": 0.9410911778608958,
+          "effect_diff": 0.009383503595987941,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 3,
+          "mean_v": 0.9526863594849905,
+          "mean_v_perp": 0.9225677231947581,
+          "effect_diff": 0.03011863629023237,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 4,
+          "mean_v": 0.9643901487191519,
+          "mean_v_perp": 0.9608284831047058,
+          "effect_diff": 0.0035616656144460412,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 5,
+          "mean_v": 0.9248660922050476,
+          "mean_v_perp": 0.9524880727132161,
+          "effect_diff": 0.027621980508168553,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 6,
+          "mean_v": 0.9198064744472504,
+          "mean_v_perp": 0.9482302864392599,
+          "effect_diff": 0.028423811992009496,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 7,
+          "mean_v": 0.930188904205958,
+          "mean_v_perp": 0.8988390425841014,
+          "effect_diff": 0.0313498616218566,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 8,
+          "mean_v": 0.9635778129100799,
+          "mean_v_perp": 0.9344066063563029,
+          "effect_diff": 0.02917120655377703,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 9,
+          "mean_v": 0.9365377227465311,
+          "mean_v_perp": 0.9315633098284404,
+          "effect_diff": 0.004974412918090754,
+          "samples_v": 30,
+          "samples_perp": 30
+        }
+      ],
+      "summary": {
+        "mean_effect_diff": 0.017482428153355913,
+        "std_effect_diff": 0.011972529265926853,
+        "min_effect_diff": 0.0035616656144460412,
+        "max_effect_diff": 0.0313498616218566
+      }
+    },
+    "alpha_1.0": {
+      "alpha": 1.0,
+      "seeds": [
+        {
+          "seed": 0,
+          "mean_v": 0.9605417549610138,
+          "mean_v_perp": 0.958027845621109,
+          "effect_diff": 0.0025139093399048074,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 1,
+          "mean_v": 0.9480860114097596,
+          "mean_v_perp": 0.9604550679524739,
+          "effect_diff": 0.012369056542714363,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 2,
+          "mean_v": 0.9488148669401805,
+          "mean_v_perp": 0.9122222185134887,
+          "effect_diff": 0.03659264842669174,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 3,
+          "mean_v": 0.9521091143290202,
+          "mean_v_perp": 0.937811553478241,
+          "effect_diff": 0.014297560850779267,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 4,
+          "mean_v": 0.946623961130778,
+          "mean_v_perp": 0.9249925394852956,
+          "effect_diff": 0.021631421645482374,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 5,
+          "mean_v": 0.9137635032335917,
+          "mean_v_perp": 0.9437211175759633,
+          "effect_diff": 0.029957614342371652,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 6,
+          "mean_v": 0.9453645129998525,
+          "mean_v_perp": 0.952170858780543,
+          "effect_diff": 0.006806345780690504,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 7,
+          "mean_v": 0.9113025546073914,
+          "mean_v_perp": 0.9070427457491557,
+          "effect_diff": 0.004259808858235736,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 8,
+          "mean_v": 0.94616792400678,
+          "mean_v_perp": 0.9449819286664327,
+          "effect_diff": 0.0011859953403472456,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 9,
+          "mean_v": 0.9618850926558177,
+          "mean_v_perp": 0.9364237546920776,
+          "effect_diff": 0.02546133796374006,
+          "samples_v": 30,
+          "samples_perp": 30
+        }
+      ],
+      "summary": {
+        "mean_effect_diff": 0.015507569909095775,
+        "std_effect_diff": 0.011736455640309208,
+        "min_effect_diff": 0.0011859953403472456,
+        "max_effect_diff": 0.03659264842669174
+      }
+    },
+    "alpha_2.0": {
+      "alpha": 2.0,
+      "seeds": [
+        {
+          "seed": 0,
+          "mean_v": 0.9281150519847869,
+          "mean_v_perp": 0.9324023564656575,
+          "effect_diff": 0.004287304480870557,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 1,
+          "mean_v": 0.9397939483324687,
+          "mean_v_perp": 0.9377644836902619,
+          "effect_diff": 0.0020294646422067686,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 2,
+          "mean_v": 0.9410331944624583,
+          "mean_v_perp": 0.9435847381750743,
+          "effect_diff": 0.002551543712616011,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 3,
+          "mean_v": 0.9533991038799285,
+          "mean_v_perp": 0.9238830844561259,
+          "effect_diff": 0.029516019423802664,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 4,
+          "mean_v": 0.930502462387085,
+          "mean_v_perp": 0.943960557381312,
+          "effect_diff": 0.01345809499422701,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 5,
+          "mean_v": 0.9332563241322835,
+          "mean_v_perp": 0.9502393305301666,
+          "effect_diff": 0.016983006397883083,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 6,
+          "mean_v": 0.922909531990687,
+          "mean_v_perp": 0.9155908028284708,
+          "effect_diff": 0.007318729162216209,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 7,
+          "mean_v": 0.9210426767667135,
+          "mean_v_perp": 0.9302382449309031,
+          "effect_diff": 0.00919556816418965,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 8,
+          "mean_v": 0.9462456345558167,
+          "mean_v_perp": 0.9301060199737549,
+          "effect_diff": 0.016139614582061812,
+          "samples_v": 30,
+          "samples_perp": 30
+        },
+        {
+          "seed": 9,
+          "mean_v": 0.9540149350961049,
+          "mean_v_perp": 0.9507716317971547,
+          "effect_diff": 0.003243303298950173,
+          "samples_v": 30,
+          "samples_perp": 30
+        }
+      ],
+      "summary": {
+        "mean_effect_diff": 0.010472264885902393,
+        "std_effect_diff": 0.008259500219305617,
+        "min_effect_diff": 0.0020294646422067686,
+        "max_effect_diff": 0.029516019423802664
+      }
+    }
+  },
+  "overall_summary": {
+    "mean_effect_across_alphas": 0.016307346125443777,
+    "std_effect_across_alphas": 0.004058256416385919
+  }
+}
